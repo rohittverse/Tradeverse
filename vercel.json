@@ -1,6 +1,15 @@
 {
+  "functions": {
+    "api/users.cjs": { "runtime": "nodejs20.x" },
+    "api/trades.cjs": { "runtime": "nodejs20.x" },
+    "api/journal.cjs": { "runtime": "nodejs20.x" },
+    "api/goals.cjs": { "runtime": "nodejs20.x" }
+  },
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/api/users", "destination": "/api/users.cjs" },
+    { "source": "/api/trades", "destination": "/api/trades.cjs" },
+    { "source": "/api/journal", "destination": "/api/journal.cjs" },
+    { "source": "/api/goals", "destination": "/api/goals.cjs" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
