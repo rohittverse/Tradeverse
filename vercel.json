@@ -1,9 +1,5 @@
 {
   "rewrites": [
-    { "source": "/api/users", "destination": "/api/users.cjs" },
-    { "source": "/api/trades", "destination": "/api/trades.cjs" },
-    { "source": "/api/journal", "destination": "/api/journal.cjs" },
-    { "source": "/api/goals", "destination": "/api/goals.cjs" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
