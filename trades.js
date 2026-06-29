@@ -1,32 +1,28 @@
 export default async function handler(req, res) {
-  const send = (code, data) => {
-    res.setHeader('Content-Type', 'application/json');
-    res.status(code).json(data);
-  };
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
-    const { getApps, initializeApp, cert } = await import('firebase-admin/app');
-    const { getAuth } = await import('firebase-admin/auth');
-    if (!getApps().length) {
-      const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
-      initializeApp({ credential: cert(serviceAccount) });
-    }
-
     const authHeader = req.headers.authorization;
-    if (!authHeader?.startsWith('Bearer ')) return send(401, { error: 'Missing token' });
-    const decoded = await getAuth().verifyIdToken(authHeader.split('Bearer ')[1]);
+    if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'Missing token' });
+    const token = authHeader.split('Bearer ')[1];
+    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString());
+    const uid = payload.user_id || payload.sub;
+    if (!uid) return res.status(401).json({ error: 'Invalid token' });
 
     const { default: pg } = await import('pg');
     const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
 
-    const userResult = await pool.query('SELECT * FROM users WHERE uid = $1', [decoded.uid]);
-    if (userResult.rows.length === 0) { await pool.end(); return send(404, { error: 'User not found' }); }
+    const userResult = await pool.query('SELECT * FROM users WHERE uid = $1', [uid]);
+    if (userResult.rows.length === 0) { await pool.end(); return res.status(404).json({ error: 'User not found' }); }
     const userId = userResult.rows[0].id;
 
     if (req.method === 'GET') {
       const result = await pool.query('SELECT * FROM trades WHERE user_id = $1 ORDER BY trade_date DESC', [userId]);
       await pool.end();
-      return send(200, result.rows);
+      return res.status(200).json(result.rows);
     }
 
     if (req.method === 'POST') {
@@ -40,13 +36,13 @@ export default async function handler(req, res) {
          body.notes || null, body.strategy || null, body.mistakes || null, body.emotions || null]
       );
       await pool.end();
-      return send(200, result.rows[0]);
+      return res.status(200).json(result.rows[0]);
     }
 
     await pool.end();
-    return send(405, { error: 'Method not allowed' });
+    return res.status(405).json({ error: 'Method not allowed' });
   } catch (error) {
     console.error('TRADES ERROR:', error.message);
-    return send(500, { error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 }
